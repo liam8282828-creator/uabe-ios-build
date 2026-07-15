@@ -26,15 +26,25 @@ jobs:
         dotnet workload install ios
         dotnet workload install wasi-experimental
 
-    - name: Compilar proyecto y generar binarios nativos (.ipa)
+    - name: Compilar proyecto con Dotnet Build
       run: |
-        dotnet publish ${{ env.PROJECT_PATH }} -c Release -r ios-arm64 --self-contained true /p:BuildIpa=true /p:ServerAddress= /p:ServerUser= /p:ServerPassword= /p:ContinueOnDisconnected=true /p:MtouchNoRedirect=true /p:UseNativeAOT=false /p:CheckEolTargetFramework=false
+        # Usamos build en lugar de publish para evitar que NativeAOT bloquee la compilación por falta de firmas
+        dotnet build ${{ env.PROJECT_PATH }} -c Release -f net8.0-ios /p:CheckEolTargetFramework=false /p:BuildIpa=false
 
     - name: Buscar y empaquetar el archivo IPA generado
       run: |
         mkdir -p output_artifacts
-        find proyecto_extracted -name "*.ipa" -exec cp {} output_artifacts/ \;
+        # Buscamos la carpeta compilada .app y la copiamos
         find proyecto_extracted -name "*.app" -exec cp -r {} output_artifacts/ \;
+        
+        # Truco comunitario: Empaquetar la carpeta .app dentro de una estructura Payload para simular un .ipa
+        cd output_artifacts
+        if [ -d *.app ]; then
+          mkdir -p Payload
+          cp -r *.app Payload/
+          zip -r UABEAvalonia.ipa Payload/
+          rm -rf Payload
+        fi
 
     - name: Subir el archivo compilado para descargar
       uses: actions/upload-artifact@v4
