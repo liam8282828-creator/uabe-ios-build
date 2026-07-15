@@ -23,12 +23,11 @@ jobs:
 
     - name: Instalar cargas de trabajo de .NET (iOS y WASI)
       run: |
-        dotnet workload install ios --include-preleases
-        dotnet workload install wasi-experimental --include-preleases
+        dotnet workload install ios
+        dotnet workload install wasi-experimental
 
     - name: Compilar proyecto y generar binarios nativos (.ipa)
       run: |
-        # Añadimos los flags para ignorar el soporte de ciclo de vida de NETSDK1202 y saltar el AOT estricto
         dotnet publish ${{ env.PROJECT_PATH }} -c Release -r ios-arm64 --self-contained true /p:BuildIpa=true /p:ServerAddress= /p:ServerUser= /p:ServerPassword= /p:ContinueOnDisconnected=true /p:MtouchNoRedirect=true /p:UseNativeAOT=false /p:CheckEolTargetFramework=false
 
     - name: Buscar y empaquetar el archivo IPA generado
