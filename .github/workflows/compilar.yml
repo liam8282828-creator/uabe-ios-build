@@ -1,11 +1,11 @@
 name: Compilar UABEAvalonia iOS
 
 on:
-  workflow_dispatch: # Permite activar la compilación manualmente con un botón
+  workflow_dispatch:
 
 jobs:
   build-ios:
-    runs-on: macos-14 # Activa una Mac virtual con procesador Apple Silicon (M1/M2)
+    runs-on: macos-14
     
     steps:
     - name: Buscar archivos en el repositorio
@@ -19,23 +19,21 @@ jobs:
     - name: Descomprimir el archivo del proyecto
       run: |
         unzip *.zip -d proyecto_extracted
-        # Mapear la ruta exacta encontrando el .csproj
         echo "PROJECT_PATH=$(find proyecto_extracted -name "*.csproj")" >> $GITHUB_ENV
 
     - name: Instalar cargas de trabajo de .NET (iOS y WASI)
       run: |
-        dotnet workload install ios
-        dotnet workload install wasi-experimental
+        dotnet workload install ios --include-preleases
+        dotnet workload install wasi-experimental --include-preleases
 
     - name: Compilar proyecto y generar binarios nativos (.ipa)
       run: |
-        # Ejecuta la compilación en modo Release saltándose los certificados locales de Apple
-        dotnet publish ${{ env.PROJECT_PATH }} -c Release -r ios-arm64 --self-contained true /p:BuildIpa=true /p:ServerAddress= /p:ServerUser= /p:ServerPassword= /p:ContinueOnDisconnected=true
+        # Añadimos los flags para ignorar el soporte de ciclo de vida de NETSDK1202 y saltar el AOT estricto
+        dotnet publish ${{ env.PROJECT_PATH }} -c Release -r ios-arm64 --self-contained true /p:BuildIpa=true /p:ServerAddress= /p:ServerUser= /p:ServerPassword= /p:ContinueOnDisconnected=true /p:MtouchNoRedirect=true /p:UseNativeAOT=false /p:CheckEolTargetFramework=false
 
     - name: Buscar y empaquetar el archivo IPA generado
       run: |
         mkdir -p output_artifacts
-        # Busca el binario compilado o el .ipa generado y lo mueve a una carpeta limpia
         find proyecto_extracted -name "*.ipa" -exec cp {} output_artifacts/ \;
         find proyecto_extracted -name "*.app" -exec cp -r {} output_artifacts/ \;
 
