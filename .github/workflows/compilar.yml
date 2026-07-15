@@ -26,13 +26,16 @@ jobs:
         dotnet workload install ios
         dotnet workload install wasi-experimental
 
+    - name: Forzar actualización de paquetes Avalonia obsoletos
+      run: |
+        # Este paso actualiza Avalonia a una versión compatible con el SDK moderno de iOS antes de compilar
+        dotnet add ${{ env.PROJECT_PATH }} package Avalonia.iOS --version 11.1.5 || true
+
     - name: Compilar proyecto con Dotnet Build (Forzado)
       env:
-        # Variables de entorno globales para obligar a .NET a omitir comprobaciones estrictas de ciclo de vida
         DOTNET_SKIP_WORKLOAD_INTEGRITY_CHECK: 'true'
         MSBUILDDISABLENUGETAUDIT: 'true'
       run: |
-        # Usamos flags avanzados para decirle a MSBuild que ignore las alertas de soporte y no las convierta en errores fatales
         dotnet build ${{ env.PROJECT_PATH }} -c Release -f net8.0-ios /p:CheckEolTargetFramework=false /p:BuildIpa=false /p:SuppressNETSDK1202=true /p:WarnAsError=false
 
     - name: Buscar y empaquetar el archivo IPA generado
