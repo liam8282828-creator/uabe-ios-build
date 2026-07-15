@@ -1,0 +1,46 @@
+name: Compilar UABEAvalonia iOS
+
+on:
+  workflow_dispatch: # Permite activar la compilación manualmente con un botón
+
+jobs:
+  build-ios:
+    runs-on: macos-14 # Activa una Mac virtual con procesador Apple Silicon (M1/M2)
+    
+    steps:
+    - name: Buscar archivos en el repositorio
+      uses: actions/checkout@v4
+
+    - name: Configurar SDK de .NET 8
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Descomprimir el archivo del proyecto
+      run: |
+        unzip *.zip -d proyecto_extracted
+        # Mapear la ruta exacta encontrando el .csproj
+        echo "PROJECT_PATH=$(find proyecto_extracted -name "*.csproj")" >> $GITHUB_ENV
+
+    - name: Instalar cargas de trabajo de .NET (iOS y WASI)
+      run: |
+        dotnet workload install ios
+        dotnet workload install wasi-experimental
+
+    - name: Compilar proyecto y generar binarios nativos (.ipa)
+      run: |
+        # Ejecuta la compilación en modo Release saltándose los certificados locales de Apple
+        dotnet publish ${{ env.PROJECT_PATH }} -c Release -r ios-arm64 --self-contained true /p:BuildIpa=true /p:ServerAddress= /p:ServerUser= /p:ServerPassword= /p:ContinueOnDisconnected=true
+
+    - name: Buscar y empaquetar el archivo IPA generado
+      run: |
+        mkdir -p output_artifacts
+        # Busca el binario compilado o el .ipa generado y lo mueve a una carpeta limpia
+        find proyecto_extracted -name "*.ipa" -exec cp {} output_artifacts/ \;
+        find proyecto_extracted -name "*.app" -exec cp -r {} output_artifacts/ \;
+
+    - name: Subir el archivo compilado para descargar
+      uses: actions/upload-artifact@v4
+      with:
+        name: UABEAvalonia-iOS-IPA
+        path: output_artifacts/
